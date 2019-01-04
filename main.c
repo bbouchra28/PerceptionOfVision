@@ -2,76 +2,15 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-volatile unsigned int timePerCycle = 10000; // ms
+#include "usart.h"
+#include "led.h"
+
+volatile unsigned long timePerCycle = 1000; // ms
 volatile unsigned long timeCycle = 0; // ms
+int led_status = 0;
 
-// ___________________________________________________
-#define BAUD 38400
-#define MYUBRR F_CPU/16/BAUD-1
-
-void USART_Init( unsigned int ubrr )
-{
-  // Set baud rate
-  UBRR0H = (unsigned char)(ubrr>>8);
-  UBRR0L = (unsigned char)ubrr;
-  // Enable receiver and transmitter
-  UCSR0B = (1<<RXEN)|(1<<TXEN);
-  // Set frame format: 8data, 2stop bit
-  UCSR0C = (1<<USBS)|(3<<UCSZ0);
-}
-
-void USART_Transmit( unsigned char data )
-{
-  // Wait for empty transmit buffer
-  while ( !( UCSR0A & (1<<UDRE)) );
-  // Put data into buffer, sends the data
-  UDR0 = data;
-}
-
-unsigned char USART_Receive( void )
-{
-  // Wait for data to be received
-  while ( !(UCSR0A & (1<<RXC)) );
-  // Get and return received data from buffer
-  return UDR0;
-}
-
-void USART_print(unsigned char* buf){
-  while(*buf!='\0'){
-    USART_Transmit(*buf);
-    ++buf;
-  }
-}
-
-void USART_ReceiveString(unsigned char* buf, int n){
-  int i = 0;
-  unsigned char byte;
-  do{
-    byte = USART_Receive();
-    buf[i] = byte;
-    i++;
-  }
-  while(byte!='\n' && i<n-1);
-  buf[i] = '\0';
-}
-
-// __________________________________________________________
-void SPI_MasterInit(void)
-{
-  // Set MOSI and SCK output, all others input
-  DDRB = (1<<DDB2)|(1<<DDB1);
-  // Enable SPI, Master, set clock rate fck/16
-  SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);
-}
-
-void SPI_MasterTransmit(char cData)
-{
-  // Start transmission
-  SPDR = cData;
-  // Wait for transmission complete
-  while(!(SPSR & (1<<SPIF)));
-}
 // __________________________________________________________
 #define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
 #define clockCyclesToMicroseconds(a) ( ((a) * 1000L) / (F_CPU / 1000L) )
@@ -128,69 +67,132 @@ void timer_init(){
   TIMSK |= _BV(TOIE0);
 }
 // __________________________________________________________
-int led_status = 0;
-void LED_on(char led){
-  led_status |= _BV(led);
-}
-void LED_off(char led){
-  led_status &= ~_BV(led);
-}
-void LED_all_off(){
-  led_status = 0;
-}
-void LED_all_on(){
-  led_status = 0xffff;
-}
-void LED_transmit(){
-  char data = (led_status>>8 & 0xff);
-  SPI_MasterTransmit(data);
-  data = (led_status & 0xff);
-  SPI_MasterTransmit(data);
 
-  PORTE |= _BV(DDE5);
-  _delay_ms(1);
-  PORTE &= ~_BV(DDE5);
-}
 
 float angle(){
   if(timePerCycle==0){
     return 0;
   }
-  float f = (millis()-timeCycle) / timePerCycle;
+  float f = (millis()-timeCycle) / (float)timePerCycle;
   return f;
 }
 
-void mode1(int seconds){
+void mode1(int hours, int minutes, int seconds){
+  if(hours > 12)
+    hours -= 12;
   float f = angle();
-  char buffer[32];
-  sprintf(buffer, "f=%3.2f timeCycle=%lu timePerCycle=%u\n", f, timeCycle, timePerCycle);
-  USART_print(buffer);
+  led_status = 0;
 
-  if(angle() < seconds/60.0){
-    LED_on(0);
-    LED_transmit();
+  float val = 0.5 - (seconds/60.0);
+  if( (f<=0.5 && (f>=val || val < 0)) || (f>0.5 && val<0 && f >= 1+val) ){
+    led_status |= 0b1111000000000000;
   }
   else{
-    LED_off(0);
-    LED_transmit();
+    led_status &= ~0b1111000000000000;
   }
+
+  val = 0.5 - (minutes/60.0);
+  if( (f<=0.5 && (f>=val || val < 0)) || (f>0.5 && val<0 && f >= 1+val) ){
+    led_status |= 0b0000001111000000;
+  }
+  else{
+    led_status &= ~0b0000001111000000;
+  }
+
+  val = 0.5 - (hours/12.0);
+  if( (f<=0.5 && (f>=val || val < 0)) || (f>0.5 && val<0 && f >= 1+val) ){
+    led_status |= 0b0000000000001111;
+  }
+  else{
+    led_status &= ~0b0000000000001111;
+  }
+  
+
+  LED_transmit(led_status);
 }
 
+int hours_d = 0;
+int minutes_d = 0;
+void mode2(int hours, int minutes, int seconds){
+  if(hours > 12)
+    hours -= 12;
 
+  float f = angle();
+  led_status = 0;
+
+  float val = 0.5 - (minutes/60.0);
+  val = (val>0) ? val : 1+val;
+  if( f>=val && minutes_d < 50){
+    led_status |= 0b0000001111111111;
+    ++minutes_d;
+  }
+  else{
+    led_status &= ~0b0000001111111111;
+  }
+
+  val = 0.5 - (hours/12.0);
+  val = (val>0) ? val : 1+val;
+  if( f>=val && hours_d < 50 ){
+    led_status |= 0b0000000000001111;
+    ++hours_d;
+  }
+  else{
+    led_status &= ~0b0000000000001111;
+  }
+  
+  LED_transmit(led_status);
+}
+// __________________________________________________________
+int hours = 15;
+int minutes = 30;
+int seconds = 0;
+unsigned long lastUpdateAt = 0;
+
+void update_time(){
+  unsigned long time = millis();
+  int dSeconds = (time - lastUpdateAt) / 1000;
+  seconds += dSeconds;
+  if(dSeconds>0)
+    lastUpdateAt = time;
+
+  if(seconds >= 60){
+    int deltaM = seconds / 60;
+    seconds -= deltaM * 60; 
+    minutes += deltaM;
+
+    if(minutes >= 60){
+      int deltaH = minutes / 60;
+      minutes -= deltaH * 60; 
+      hours += deltaH;
+
+      if(hours >= 24){
+        hours = hours % 24;
+      }
+    }
+  }
+}
 // __________________________________________________________
 
 ISR(INT0_vect)
 {
   cli();
-  USART_Transmit('i');
-  USART_Transmit('\n');
+
   unsigned long t = millis();
-  timePerCycle = t - timeCycle;
+
+  int diff = (t - timeCycle - timePerCycle);
+  int diff1 = t - timeCycle;
+
+  timePerCycle = (timePerCycle*0.3 + diff1*0.7)+2; // prendre en compte la dernière valeur pour plus de précision
+  if(timePerCycle<0)
+    timePerCycle = 1;
   timeCycle = t;
 
-  /*char buffer[32];
-  sprintf(buffer, "i timePerCycle=%u timeCycle=%lu\n", timePerCycle, timeCycle);
-  USART_print(buffer);*/
+
+  minutes_d = 0;
+  hours_d = 0;
+  update_time();
+
+  
   sei();
 }
 
@@ -205,11 +207,6 @@ int main() {
 
     char buffer[32];
 
-    unsigned char data = 0b00000001;
-    SPI_MasterTransmit(data);
-    SPI_MasterTransmit(data);
-
-
     // Hall sensor : change pin 0 on bus D to an INPUT
     DDRD &= ~_BV(DDD0);
 
@@ -223,32 +220,45 @@ int main() {
     // Allow global interrupts
     sei();
 
-
+    void (*mode_function)(int, int, int);
+    mode_function = &mode1;
 
     while(1){
-      //USART_ReceiveString(buffer, 32);
-      /*float f = 1.12;
-      sprintf(buffer, "f=%1.2f\n", f);
-      USART_print(buffer);*/
 
-      mode1(30);
+      if(USART_Available()){
+        int n = USART_ReceiveString((unsigned char*)buffer, 32);
+        if(n>=2 && buffer[0]=='m' && buffer[1]>='1' && buffer[1]<='2'){
+            if(buffer[1]=='2'){
+              mode_function = &mode2;
+              sprintf(buffer, "MODE 2");
+              USART_print((unsigned char*)buffer);
+            }
+            else{
+              mode_function = &mode1;
+              sprintf(buffer, "MODE 1");
+              USART_print((unsigned char*)buffer);
+            }
+        }
+        else if(n>=9 && buffer[0]=='h'){
+          int h = atoi(buffer+1);
+          int m = atoi(buffer+4);
+          int s = atoi(buffer+7);
 
-      /*int b = PIND & _BV(PIND0);
-      if(!b){
-        LED_on(1);
-        LED_on(2);
-        LED_on(3);
-        LED_on(13);
-        LED_on(14);
-        LED_on(15);
-        LED_transmit();
+          if(h<0 && h>=24)
+            h = 0;
+          if(m<0 && m>=60)
+            m = 0;
+          if(s<0 && s>=60)
+            s = 0;
+
+          hours = h;
+          minutes = m;
+          seconds = s;
+
+          sprintf(buffer, "%d:%d:%d", hours, minutes, seconds);
+          USART_print((unsigned char*)buffer);
+        }
       }
-      else{
-        LED_all_off();
-        LED_transmit();
-      }*/
-
-
-      //_delay_ms(1000);
+      mode_function(hours, minutes, seconds);
     }
 }
