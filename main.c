@@ -6,6 +6,7 @@
 
 #include "usart.h"
 #include "led.h"
+#include "text.h"
 
 volatile unsigned long timePerCycle = 1000; // ms
 volatile unsigned long timeCycle = 0; // ms
@@ -33,24 +34,24 @@ SIGNAL(TIMER0_OVF_vect)
     // (volatile variables must be read from memory on every access)
     unsigned long m = timer0_millis;
     unsigned char f = timer0_fract;
- 
+
     m += MILLIS_INC;
     f += FRACT_INC;
     if (f >= FRACT_MAX) {
         f -= FRACT_MAX;
         m += 1;
     }
- 
+
     timer0_fract = f;
     timer0_millis = m;
     timer0_overflow_count++;
 }
-    
+
 unsigned long millis()
 {
     unsigned long m;
     uint8_t oldSREG = SREG;
- 
+
     // disable interrupts while we read timer0_millis or we might get an
     // inconsistent value (e.g. in the middle of a write to timer0_millis)
     cli();
@@ -106,7 +107,7 @@ void mode1(int hours, int minutes, int seconds){
   else{
     led_status &= ~0b0000000000001111;
   }
-  
+
 
   LED_transmit(led_status);
 }
@@ -139,7 +140,7 @@ void mode2(int hours, int minutes, int seconds){
   else{
     led_status &= ~0b0000000000001111;
   }
-  
+
   LED_transmit(led_status);
 }
 // __________________________________________________________
@@ -157,12 +158,12 @@ void update_time(){
 
   if(seconds >= 60){
     int deltaM = seconds / 60;
-    seconds -= deltaM * 60; 
+    seconds -= deltaM * 60;
     minutes += deltaM;
 
     if(minutes >= 60){
       int deltaH = minutes / 60;
-      minutes -= deltaH * 60; 
+      minutes -= deltaH * 60;
       hours += deltaH;
 
       if(hours >= 24){
@@ -192,11 +193,12 @@ ISR(INT0_vect)
   hours_d = 0;
   update_time();
 
-  
+
   sei();
 }
 
 int main() {
+  /*
     DDRE |= _BV(DDE4)|_BV(DDE5);
     PORTE &= ~_BV(DDE4);
     PORTE &= ~_BV(DDE5);
@@ -260,5 +262,26 @@ int main() {
         }
       }
       mode_function(hours, minutes, seconds);
+    }*/
+
+    // Inits
+    SPI_MasterInit();
+    initMatrix();
+    clearMatrix();
+    initBuffer();
+
+    // Pointer to beginning of message
+    const char *messagePointer = &message[0];
+
+    // Size of message matrix
+    uint16_t messageSize = sizeof(message);
+
+    // Event loop
+    while (1)
+    {
+
+     displayMessage(messagePointer, messageSize);	// Display the message
+
     }
+    return (0);
 }

@@ -139,28 +139,3 @@ void displayBuffer()
 	   }
    }
 }
-
-// Main Loop
-int main(void)
-{
-  // Inits
-  SPI_MasterInit();
-  initMatrix();
-  clearMatrix();
-  initBuffer();
-
-  // Pointer to beginning of message
-  const char *messagePointer = &message[0];
-
-  // Size of message matrix
-  uint16_t messageSize = sizeof(message);
-
-  // Event loop
-  while (1)
-  {
-
-   displayMessage(messagePointer, messageSize);	// Display the message
-
-  }
-  return (0);
-}
