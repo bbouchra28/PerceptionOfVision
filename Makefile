@@ -3,15 +3,18 @@ EXEC=main
 all: $(EXEC).bin
 
 usart.o: usart.c
-	avr-gcc -Wall -Os -mmcu=atmega128 -DF_CPU=13000000 -c $< 
+	avr-gcc -Wall -Os -mmcu=atmega128 -DF_CPU=13000000 -c $<
 
 led.o: led.c
-	avr-gcc -Wall -Os -mmcu=atmega128 -DF_CPU=13000000 -c $< 
+	avr-gcc -Wall -Os -mmcu=atmega128 -DF_CPU=13000000 -c $<
+
+text.o: text.c
+	avr-gcc -Wall -Os -mmcu=atmega128 -DF_CPU=13000000 -c $<
 
 main.o: main.c
-	avr-gcc -Wall -Os -mmcu=atmega128 -DF_CPU=13000000 -c $< 
+	avr-gcc -Wall -Os -mmcu=atmega128 -DF_CPU=13000000 -c $<
 
-$(EXEC).elf: $(EXEC).o usart.o led.o
+$(EXEC).elf: $(EXEC).o usart.o led.o text.o
 	avr-gcc -mmcu=atmega128 -o $@ $^ -Wl,-u,vfprintf -lprintf_flt -lm
 	#avr-gcc -mmcu=atmega128 -Os -DF_CPU=13000000 $(EXEC).c -o $@ -Wl,-u,vfprintf -lprintf_flt -lm
 

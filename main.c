@@ -183,7 +183,7 @@ ISR(INT0_vect)
   int diff = (t - timeCycle - timePerCycle);
   int diff1 = t - timeCycle;
 
-  timePerCycle = (timePerCycle*0.3 + diff1*0.7)+2; // prendre en compte la dernière valeur pour plus de précision
+  timePerCycle = (timePerCycle*0.3 + diff*0.7)+2; // prendre en compte la dernière valeur pour plus de précision
   if(timePerCycle<0)
     timePerCycle = 1;
   timeCycle = t;
@@ -198,7 +198,6 @@ ISR(INT0_vect)
 }
 
 int main() {
-  /*
     DDRE |= _BV(DDE4)|_BV(DDE5);
     PORTE &= ~_BV(DDE4);
     PORTE &= ~_BV(DDE5);
@@ -221,21 +220,22 @@ int main() {
 
     // Allow global interrupts
     sei();
-
     void (*mode_function)(int, int, int);
     mode_function = &mode1;
 
-    while(1){
 
+    while(1){
       if(USART_Available()){
         int n = USART_ReceiveString((unsigned char*)buffer, 32);
         if(n>=2 && buffer[0]=='m' && buffer[1]>='1' && buffer[1]<='2'){
-            if(buffer[1]=='2'){
+            if(buffer[1]=='2')
+            {
               mode_function = &mode2;
               sprintf(buffer, "MODE 2");
               USART_print((unsigned char*)buffer);
             }
-            else{
+            else
+            {
               mode_function = &mode1;
               sprintf(buffer, "MODE 1");
               USART_print((unsigned char*)buffer);
@@ -262,26 +262,6 @@ int main() {
         }
       }
       mode_function(hours, minutes, seconds);
-    }*/
-
-    // Inits
-    SPI_MasterInit();
-    initMatrix();
-    clearMatrix();
-    initBuffer();
-
-    // Pointer to beginning of message
-    const char *messagePointer = &message[0];
-
-    // Size of message matrix
-    uint16_t messageSize = sizeof(message);
-
-    // Event loop
-    while (1)
-    {
-
-     displayMessage(messagePointer, messageSize);	// Display the message
-
+      //displayChar('A');
     }
-    return (0);
 }
