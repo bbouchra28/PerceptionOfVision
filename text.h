@@ -4,6 +4,7 @@
 #include <avr/pgmspace.h>
 
 // Function Prototypes
+
 void displayChar(char c);
 
 void displayString(char* s);

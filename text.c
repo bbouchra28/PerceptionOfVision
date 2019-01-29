@@ -107,9 +107,10 @@ void displayChar(char c)
   for (int i = 0; i <5; i++)
   {
     LED_transmit(characters[c - 32][i]);
-    _delay_us(1);
+    _delay_us(200);
   }
-  LED_transmit(0x00);
+  LED_transmit(0);
+  _delay_us(200);
 }
 
 void displayString(char* s)

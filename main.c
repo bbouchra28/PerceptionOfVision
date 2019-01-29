@@ -79,6 +79,7 @@ float angle(){
 }
 
 void mode1(int hours, int minutes, int seconds){
+
   if(hours > 12)
     hours -= 12;
   float f = angle();
@@ -183,7 +184,7 @@ ISR(INT0_vect)
   int diff = (t - timeCycle - timePerCycle);
   int diff1 = t - timeCycle;
 
-  timePerCycle = (timePerCycle*0.3 + diff*0.7)+2; // prendre en compte la dernière valeur pour plus de précision
+  timePerCycle = (timePerCycle*0.3 + diff1*0.7)+2; // prendre en compte la dernière valeur pour plus de précision
   if(timePerCycle<0)
     timePerCycle = 1;
   timeCycle = t;
@@ -196,6 +197,7 @@ ISR(INT0_vect)
 
   sei();
 }
+
 
 int main() {
     DDRE |= _BV(DDE4)|_BV(DDE5);
@@ -223,9 +225,9 @@ int main() {
     void (*mode_function)(int, int, int);
     mode_function = &mode1;
 
-
     while(1){
-      if(USART_Available()){
+
+      /*if(USART_Available()){
         int n = USART_ReceiveString((unsigned char*)buffer, 32);
         if(n>=2 && buffer[0]=='m' && buffer[1]>='1' && buffer[1]<='2'){
             if(buffer[1]=='2')
@@ -261,7 +263,7 @@ int main() {
           USART_print((unsigned char*)buffer);
         }
       }
-      mode_function(hours, minutes, seconds);
-      //displayChar('A');
+      mode_function(hours, minutes, seconds);*/
+      displayChar('A');
     }
 }
