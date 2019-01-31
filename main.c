@@ -224,10 +224,11 @@ int main() {
     sei();
     void (*mode_function)(int, int, int);
     mode_function = &mode1;
-
+    int mode = 0;
+    char* string;
     while(1){
 
-      /*if(USART_Available()){
+      if(USART_Available()){
         int n = USART_ReceiveString((unsigned char*)buffer, 32);
         if(n>=2 && buffer[0]=='m' && buffer[1]>='1' && buffer[1]<='2'){
             if(buffer[1]=='2')
@@ -262,8 +263,23 @@ int main() {
           sprintf(buffer, "%d:%d:%d", hours, minutes, seconds);
           USART_print((unsigned char*)buffer);
         }
+        else if (buffer[0] == 't')
+        {
+          mode = 1;
+          sprintf(buffer, "TEXT");
+          USART_print((unsigned char*)buffer);
+          string = buffer[2];
+
+        }
       }
-      mode_function(hours, minutes, seconds);*/
-      displayChar('A');
+      if (!mode)
+      {
+        mode_function(hours, minutes, seconds);
+      }
+      else
+      {
+        displayString(string);
+      }
+
     }
 }

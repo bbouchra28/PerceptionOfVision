@@ -1,4 +1,4 @@
-#include <util/delay.h>
+ #include <util/delay.h>
 #include "text.h"
 #include "led.h"
 
@@ -104,7 +104,8 @@ const char characters[96][5] PROGMEM = {
 
 void displayChar(char c)
 {
-  for (int i = 0; i <5; i++)
+  int i;
+  for (i = 0; i <5; i++)
   {
     LED_transmit(characters[c - 32][i]);
     _delay_us(200);
@@ -115,7 +116,8 @@ void displayChar(char c)
 
 void displayString(char* s)
 {
-  for (int i = 0; i<=strlen(s); i++)
+  int i;
+  for (i = 0; i<=strlen(s); i++)
   {
     displayChar(s[i]);
   }
